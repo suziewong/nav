@@ -1,0 +1,99 @@
+<?
+		
+		include ("sphinxapi.php");
+		$keywords = $_GET['wd'];
+		$page = isset($_GET['page'])?$_GET['page']:1;
+		$offset = 0;
+		$pagesize = 10;
+		$maxRows;
+		$maxPage;
+		//$offset = ($page-1)*$pagesize;
+		$pagesize = $pagesize;
+
+		if($_GET['wd']=="")
+		{
+			header("Location:index.php");
+		}
+		$sphinx = new SphinxClient();
+		
+		$sphinx->SetServer('localhost',9312);
+
+		//$sphinx->SetLimits(0,1);
+		$sphinx->SetMatchMode(SPH_MATCH_ANY);
+		//$sphinx-> setSortMode(SPH_SORT_EXTENDED,"@id DESC");
+		//$sphinx-> setSortMode(SPH_SORT_RELEVANCE);
+		
+		//$sphinx->SetLimits(0,1000);
+		//查询舍得相当蛋疼，权重待考量
+		$result = $sphinx->query("$keywords","posts");	
+		//$result = $sphinx->query("$keywords","threads,posts");	
+	/*	echo "<pre>";
+		var_dump($result);
+		echo "</pre>";
+		exit;*/
+		if($result === false)
+		{
+			echo "查询错误".$sphinx->GetLastError();
+
+		}
+		else
+		{
+			if($sphinx->GetLastWarning())
+			{
+				echo "查询错误".$sphinx->GetLastError();
+
+			}
+			
+			if($result['total_found'] != 0)
+			{
+				
+			
+
+/*echo "<pre>";
+	var_dump($result);
+echo "</pre>";
+		exit;*/
+		
+	$ids = join(",",array_keys($result['matches']));
+	$time = $result['time'];
+	$total_found = $result['total_found'];
+	
+	$maxRows =  sizeof($result['matches']);
+	//echo $maxRows;
+	$maxPage = ceil($maxRows/$pagesize);
+	if($page > $maxPage)
+	{
+		$page = $maxPage;
+	}
+	if($page < 1)
+	{
+
+		$page = 1;
+		//echo $page;
+	}
+	//echo "Coreseek为你搜到".$total_found."篇文档（用时".$time."s)<br/>";
+	mysql_connect("210.32.200.91","suzie","123456");
+	mysql_select_db("discuzx");
+	$sql = "select pid,tid,fid,subject,message,position from pre_forum_post where  pid in ({$ids})  order by substring_index('{$ids}',pid,1) limit ".($page-1)*$pagesize.",".$pagesize;
+	/*$sql = "select pid,tid,fid,subject,position from pre_forum_post where  pid in ({$ids})  order by substring_index('{$ids}',pid,1) limit ".($page-1)*$pagesize.",".$pagesize;
+		//$sql = "select id,name,descr,size,last_action from torrents where id in ({$ids}) order by last_action desc limit ".($page-1)*$pagesize.",".$pagesize;
+	echo $sql;
+	echo "<pre>";
+	var_dump($result);
+echo "</pre>";
+		exit;*/
+
+	$rst = mysql_query($sql);
+	//var_dump($rst);
+	/*echo "<pre>";
+	var_dump($rst);
+echo "</pre>";
+		exit;*/
+
+	$opts = array(
+			"before_match"=>"<font style='color:red;font-weight:bold'>",
+			"after_match"=>"</font>"
+		);
+			} 
+		}
+	?>
